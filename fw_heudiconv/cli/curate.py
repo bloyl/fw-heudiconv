@@ -187,56 +187,61 @@ def convert_to_bids(client, project_label, heuristic_path, subject_labels=None,
             "Found SeqInfos:\n%s",
             "\n\t".join([pretty_string_seqinfo(seq) for seq in seq_infos]))
 
-        # apply heuristic to seqinfos
-        to_rename = heuristic.infotodict(seq_infos)
+        try:
+            # apply heuristic to seqinfos
+            to_rename = heuristic.infotodict(seq_infos)
 
-        if not to_rename:
-            logger.debug("No changes to apply!")
-            continue
+            if not to_rename:
+                logger.debug("No changes to apply!")
+                continue
 
-        # try intendedfors
-        intention_map = defaultdict(list)
-        if hasattr(heuristic, "IntendedFor"):
-            logger.info("Processing IntendedFor fields based on heuristic file")
-            intention_map.update(heuristic.IntendedFor)
-            logger.debug("Intention map: %s",
-                         pprint.pformat(
-                             [(k[0], v) for k, v in dict(intention_map).items()]))
+            # try intendedfors
+            intention_map = defaultdict(list)
+            if hasattr(heuristic, "IntendedFor"):
+                logger.info("Processing IntendedFor fields based on heuristic file")
+                intention_map.update(heuristic.IntendedFor)
+                logger.debug("Intention map: %s",
+                            pprint.pformat(
+                                [(k[0], v) for k, v in dict(intention_map).items()]))
 
-        # try metadataextras
-        metadata_extras = defaultdict(list)
-        if hasattr(heuristic, "MetadataExtras"):
-            logger.info("Processing Medatata fields based on heuristic file")
-            metadata_extras.update(heuristic.MetadataExtras)
-            logger.debug("Metadata extras: %s", metadata_extras)
+            # try metadataextras
+            metadata_extras = defaultdict(list)
+            if hasattr(heuristic, "MetadataExtras"):
+                logger.info("Processing Medatata fields based on heuristic file")
+                metadata_extras.update(heuristic.MetadataExtras)
+                logger.debug("Metadata extras: %s", metadata_extras)
 
-        # try subject/session label functions
-        if hasattr(heuristic, "ReplaceSubject"):
-            subject_rename = heuristic.ReplaceSubject
-        else:
-            subject_rename = None
-        if hasattr(heuristic, "ReplaceSession"):
-            session_rename = heuristic.ReplaceSession
-        else:
-            session_rename = None
+            # try subject/session label functions
+            if hasattr(heuristic, "ReplaceSubject"):
+                subject_rename = heuristic.ReplaceSubject
+            else:
+                subject_rename = None
+            if hasattr(heuristic, "ReplaceSession"):
+                session_rename = heuristic.ReplaceSession
+            else:
+                session_rename = None
 
-        # try attachments
-        if hasattr(heuristic, "AttachToSession"):
-            logger.info("Processing session attachments based on heuristic file")
+            # try attachments
+            if hasattr(heuristic, "AttachToSession"):
+                logger.info("Processing session attachments based on heuristic file")
 
-            attachments = heuristic.AttachToSession()
+                attachments = heuristic.AttachToSession()
 
-            if not isinstance(attachments, list):
-                attachments = [attachments]
+                if not isinstance(attachments, list):
+                    attachments = [attachments]
 
-            for at in attachments:
+                for at in attachments:
 
-                upload_attachment(
-                    client, session, level='session', attachment_dict=at,
-                    subject_rename=subject_rename, session_rename=session_rename,
-                    folders=['anat', 'dwi', 'func', 'fmap', 'perf'],
-                    dry_run=dry_run
-                        )
+                    upload_attachment(
+                        client, session, level='session', attachment_dict=at,
+                        subject_rename=subject_rename, session_rename=session_rename,
+                        folders=['anat', 'dwi', 'func', 'fmap', 'perf'],
+                        dry_run=dry_run
+                            )
+        
+        except Exception as e:
+            logger.warning("Error processing heuristic to %s (%d/%d)...%s",
+                           session.label, sesnum+1, num_sessions, str(e))
 
         # final prep
         if not dry_run:
